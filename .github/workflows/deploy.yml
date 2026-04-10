@@ -25,6 +25,13 @@ jobs:
           curl -L -o tinyfeed https://github.com/TheBigRoomXXL/tinyfeed/releases/download/v1.5.0/tinyfeed_freebsd_amd64
           chmod +x tinyfeed
 
+
+      - name: Debug Binary
+        run: |
+          ls -lh tinyfeed
+          file tinyfeed
+          ldd tinyfeed || echo "Static binary or not a dynamic executable"
+
       - name: Generate HTML
         run: |
           # 执行你的命令
