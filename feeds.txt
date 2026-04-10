@@ -6,3 +6,5 @@ https://www.v2ex.com/index.xml
 
 # 独立站点
 https://blog.ops-coffee.com/atom.xml
+https://1900.live/rss
+https://mobius.blog/feed/
