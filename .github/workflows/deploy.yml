@@ -1,46 +1,62 @@
-name: Generate Static Feed
+name: Build and Deploy Feed
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'feeds.txt'
+      - '.github/workflows/deploy.yml'
   schedule:
-    - cron: '0 */6 * * *' # 每 6 小时自动运行一次
-  workflow_dispatch:      # 允许手动触发
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: feed-build
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     permissions:
-      contents: write # 赋予 Action 推送代码的权限
+      contents: read
+      pages: write
+      id-token: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Tinyfeed
+      - name: Setup Tinyfeed
         run: |
-          # 假设从 GitHub Release 下载二进制文件（请替换为实际下载地址）
-          # 如果你已经把二进制放在了仓库根目录，可以跳过下载步骤
+          set -e
           curl -L -o tinyfeed https://github.com/TheBigRoomXXL/tinyfeed/releases/download/v1.5.0/tinyfeed_linux_arm64
           chmod +x tinyfeed
 
-
-      - name: Debug Binary
-        run: |
-          ls -lh tinyfeed
-          file tinyfeed
-          ldd tinyfeed || echo "Static binary or not a dynamic executable"
-
       - name: Generate HTML
         run: |
-          # 执行你的命令
-          ./tinyfeed --input feeds.txt --output index.html
+          set -e
+          ./tinyfeed --input feeds.txt --output src/index.html
 
-      - name: Deploy to GitHub Pages (or commit)
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          # 只有在有变化时才提交
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update feed index" && git push)
+      # 👇 上传为 Pages artifact
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./src
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
